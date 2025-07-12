@@ -33,6 +33,9 @@ model User {
   tagsFollowed  TagsOnUsers[]
   UserBadges    UserBadges[]
   votes         Vote[]
+  // Community relations
+  communitiesOwned Community[] @relation("CommunityOwner")
+  communityMemberships CommunityMembers[] @relation("CommunityMember")
 
   @@map("user")
 }
@@ -95,12 +98,16 @@ model Question {
   isDeleted    Boolean                  @default(false)
   attempt      String
   answersCount Int                      @default(0)
+  // Community relation
+  communityId  String?
   answers      Answer[]
   author       User                     @relation(fields: [authorId], references: [id])
+  community    Community?               @relation(fields: [communityId], references: [id])
   questionTags TagsOnQuestions[]
 
   @@index([authorId])
   @@index([createdAt])
+  @@index([communityId])
   @@map("question")
 }
 
@@ -225,6 +232,35 @@ model UserBadges {
   @@map("user_badges")
 }
 
+model Community {
+  id          String             @id @default(cuid())
+  name        String             @unique
+  description String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  imageUrl    String?
+  bannerUrl   String?
+  isPrivate   Boolean            @default(false)
+  ownerId     String
+  owner       User               @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members     CommunityMembers[]
+  questions   Question[]
+
+  @@map("community")
+}
+
+model CommunityMembers {
+  userId      String
+  communityId String
+  role        CommunityRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+  user        User          @relation("CommunityMember", fields: [userId], references: [id], onDelete: Cascade)
+  community   Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@id([userId, communityId])
+  @@map("community_members")
+}
+
 enum UserRole {
   guest
   user
@@ -243,4 +279,10 @@ enum NotificationType {
 enum VoteType {
   UPVOTE
   DOWNVOTE
+}
+
+enum CommunityRole {
+  MEMBER
+  ADMIN
+  OWNER
 }

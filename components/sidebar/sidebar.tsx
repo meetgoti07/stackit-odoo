@@ -43,14 +43,22 @@ export function Sidebar() {
           href="/users"
           isActive={isActive("/users")} 
         />
+        <NavigationItem 
+          icon={<Building2 />} 
+          label="Communities" 
+          href="/communities"
+          isActive={isActive("/communities")} 
+        />
 
         <Separator className="my-4" />
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">COLLECTIVES</span>
-            <Button variant="ghost" size="sm" className="w-6 h-6 p-0">
-              <Plus className="w-3 h-3" />
+            <Button variant="ghost" size="sm" className="w-6 h-6 p-0" asChild>
+              <a href="/communities/create" title="Create Community">
+                <Plus className="w-3 h-3" />
+              </a>
             </Button>
           </div>
           <p className="text-xs text-gray-500">Communities for your favorite technologies.</p>

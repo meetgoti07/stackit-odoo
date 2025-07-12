@@ -150,7 +150,7 @@ export async function POST(request: NextRequest, response: NextResponse) {
 
     const authorId = session.user.id;
     const body = await request.json();
-    const { title, description, attempt, tags } = body;
+    const { title, description, attempt, tags, communityId } = body;
 
     // Validate required fields
     if (!title || !description || !attempt) {
@@ -180,6 +180,33 @@ export async function POST(request: NextRequest, response: NextResponse) {
       );
     }
 
+    // If communityId is provided, validate community membership
+    if (communityId) {
+      const community = await prisma.community.findUnique({
+        where: { id: communityId },
+        include: {
+          members: {
+            where: { userId: authorId }
+          }
+        }
+      });
+
+      if (!community) {
+        return NextResponse.json(
+          { error: 'Community not found' },
+          { status: 404 }
+        );
+      }
+
+      // Check if user is a member of the community
+      if (community.members.length === 0) {
+        return NextResponse.json(
+          { error: 'You must be a member of the community to post questions' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Create question with tags
     const question = await prisma.question.create({
       data: {
@@ -187,6 +214,7 @@ export async function POST(request: NextRequest, response: NextResponse) {
         description,
         attempt,
         authorId,
+        communityId: communityId || null,
         questionTags: tags && tags.length > 0 ? {
           create: await Promise.all(
             tags.map(async (tagName: string) => {
@@ -213,6 +241,12 @@ export async function POST(request: NextRequest, response: NextResponse) {
             reputation: true
           }
         },
+        community: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
         questionTags: {
           include: {
             tag: {
@@ -233,6 +267,7 @@ export async function POST(request: NextRequest, response: NextResponse) {
       description: question.description,
       attempt: question.attempt,
       author: question.author,
+      community: question.community,
       tags: question.questionTags.map(qt => qt.tag),
       votes: 0,
       answers: 0,

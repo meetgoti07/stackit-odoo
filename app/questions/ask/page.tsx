@@ -1,7 +1,7 @@
 "use client"
-// importing necessary libraries
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Header } from "@/components/header/header"
 import { Sidebar } from "@/components/sidebar/sidebar"
@@ -10,23 +10,34 @@ import { QuestionDetails } from "@/components/ask-question/question-details"
 import { AttemptDetails } from "@/components/ask-question/attempt-details"
 import { TagsInput } from "@/components/ask-question/tags-input"
 import { DuplicateChecker } from "@/components/ask-question/duplicate-checker"
+import { CommunitySelector } from "@/components/ask-question/community-selector"
 import { createQuestion, useCurrentUser } from "@/lib/api"
-// main function
+
 export default function AskQuestionPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, isLoading: userLoading, error: userError } = useCurrentUser()
-  // defining states
+  
   const [title, setTitle] = useState("")
   const [details, setDetails] = useState("")
   const [attempts, setAttempts] = useState("")
   const [tags, setTags] = useState<string[]>([])
+  const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(null)
   const [isNotDuplicate, setIsNotDuplicate] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  // Get community ID from URL params if provided
+  useEffect(() => {
+    const communityParam = searchParams.get('community')
+    if (communityParam) {
+      setSelectedCommunityId(communityParam)
+    }
+  }, [searchParams])
+
   const canSubmit =
     title.length >= 10 && details.length >= 20 && attempts.length >= 20 && tags.length > 0 && isNotDuplicate
-// submitting logic
+
   const handleSubmit = async () => {
     if (!canSubmit || isSubmitting) return
 
@@ -39,6 +50,7 @@ export default function AskQuestionPage() {
         description: details,
         attempt: attempts,
         tags,
+        communityId: selectedCommunityId,
       }
 
       const response = await createQuestion(questionData)
@@ -111,6 +123,11 @@ export default function AskQuestionPage() {
 
           <div className="space-y-8">
             <QuestionTitle value={title} onChange={setTitle} />
+
+            <CommunitySelector 
+              selectedCommunityId={selectedCommunityId}
+              onCommunitySelect={setSelectedCommunityId}
+            />
 
             <QuestionDetails value={details} onChange={setDetails} />
 
