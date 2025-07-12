@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
       where: whereClause
     })
 
+    // count the total pages
     const totalPages = Math.ceil(totalCount / limit)
 
     return NextResponse.json({
@@ -72,6 +73,7 @@ export async function GET(request: NextRequest) {
         createdAt: tag.createdAt.toISOString(),
         updatedAt: tag.updatedAt.toISOString()
       })),
+      // pagination
       pagination: {
         currentPage: page,
         totalPages,
