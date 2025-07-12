@@ -5,10 +5,10 @@ import { Home, MessageSquare, Tag, Bookmark, Zap, MessageCircle, FileText, Users
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { NavigationItem } from "./navigation-item"
-
+// Starting the sidebar function
 export function Sidebar() {
   const pathname = usePathname()
-
+// navigate to defined path
   const isActive = (path: string) => {
     if (path === "/") {
       return pathname === "/"
