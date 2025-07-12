@@ -413,3 +413,44 @@ export function useCurrentUser() {
     error,
   }
 }
+
+// Sidebar types and hooks
+export interface SidebarPost {
+  id: string
+  title: string
+  views?: number
+  answersCount?: number
+  netVotes?: number
+  createdAt: string
+}
+
+export interface SidebarSection {
+  title: string
+  type: 'trending' | 'hot' | 'featured'
+  posts: SidebarPost[]
+}
+
+export interface SidebarResponse {
+  sections: SidebarSection[]
+  lastUpdated: string
+}
+
+export function useSidebarData() {
+  const { data, error, isLoading, mutate } = useSWR<SidebarResponse>(
+    '/api/sidebar',
+    fetcher,
+    {
+      refreshInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+      revalidateOnFocus: false, // Don't revalidate on window focus
+      dedupingInterval: 2 * 60 * 1000, // Dedupe requests for 2 minutes
+    }
+  )
+
+  return {
+    sections: data?.sections || [],
+    lastUpdated: data?.lastUpdated,
+    isLoading,
+    error,
+    mutate,
+  }
+}
