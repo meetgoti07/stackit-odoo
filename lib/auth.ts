@@ -16,6 +16,34 @@ export const auth = betterAuth({
     emailAndPassword: {
         enabled: true
     },
+    user: {
+        additionalFields: {
+            role: {
+                type: "string",
+                required: false,
+                defaultValue: "user",
+                input: false, // don't allow user to set role during signup
+            },
+            reputation: {
+                type: "number",
+                required: false,
+                defaultValue: 0,
+                input: false, // reputation is calculated, not set by user
+            },
+            bio: {
+                type: "string",
+                required: false,
+            },
+            location: {
+                type: "string",
+                required: false,
+            },
+            website: {
+                type: "string",
+                required: false,
+            },
+        },
+    },
     socialProviders: {
         google: {
            clientId: process.env.GOOGLE_CLIENT_ID as string,

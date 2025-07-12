@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@/lib/generated/prisma';
-
-const prisma = new PrismaClient();
+import { authClient } from '@/lib/auth-client';
+import { headers } from 'next/headers';
+import {prisma} from "@/lib/prisma";
 
 // GET ALL QUESTIONS
 export async function GET(request: NextRequest) {
@@ -120,15 +120,42 @@ export async function GET(request: NextRequest) {
 }
 
 // POST NEW QUESTION
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest, response: NextResponse) {
   try {
+    // Get the session to extract user ID
+    const { data: session, error: sessionError } = await authClient.getSession({
+      fetchOptions: {
+        headers: await headers(),
+      },
+    });
+
+    if (sessionError || !session || !session.session || !session.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check session expiration
+    const expiresAt = new Date(session.session.expiresAt).getTime();
+    const currentTime = Date.now();
+    const isSessionValid = expiresAt > currentTime;
+
+    if (!isSessionValid) {
+      return NextResponse.json(
+        { error: 'Session expired' },
+        { status: 401 }
+      );
+    }
+
+    const authorId = session.user.id;
     const body = await request.json();
-    const { title, description, attempt, authorId, tags } = body;
+    const { title, description, attempt, tags } = body;
 
     // Validate required fields
-    if (!title || !description || !attempt || !authorId) {
+    if (!title || !description || !attempt) {
       return NextResponse.json(
-        { error: 'Missing required fields: title, description, attempt, authorId' },
+        { error: 'Missing required fields: title, description, attempt' },
         { status: 400 }
       );
     }

@@ -44,7 +44,7 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
       const { data, error } = await authClient.signIn.email({
         email,
         password,
-        callbackURL: "/dashboard",
+        callbackURL: "/",
         rememberMe: false,
       });
 

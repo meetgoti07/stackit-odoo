@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../lib/generated/prisma"
@@ -14,65 +8,67 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Better Auth Models - Keep as is
 model User {
-  id            String   @id @default(cuid()) // Use cuid for robust ID generation
+  id            String         @id @default(cuid())
   name          String
-  email         String   @unique
-  emailVerified Boolean  @default(false)
+  email         String         @unique
+  emailVerified Boolean        @default(false)
   image         String?
-  role          UserRole @default(user) // Added UserRole enum
-  reputation    Int      @default(0) // User reputation score
-  bio           String?  @db.Text
+  role          UserRole       @default(user)
+  reputation    Int            @default(0)
+  bio           String?
   location      String?
   website       String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  sessions      Session[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  banExpires    DateTime?
+  banReason     String?
+  banned        Boolean?
   accounts      Account[]
-  questions     Question[]
   answers       Answer[]
-  votes         Vote[]
-  comments      Comment[] // For future comment feature
+  comments      Comment[]
   notifications Notification[]
-  tagsFollowed  TagsOnUsers[] // For personalized feed/recommendations
+  questions     Question[]
+  sessions      Session[]
+  tagsFollowed  TagsOnUsers[]
   UserBadges    UserBadges[]
+  votes         Vote[]
 
   @@map("user")
 }
 
 model Session {
-  id        String   @id @default(cuid())
-  expiresAt DateTime
-  token     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  expiresAt      DateTime
+  token          String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  impersonatedBy String?
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("session")
 }
 
 model Account {
   id                    String    @id @default(cuid())
-  accountId             String // e.g., Google user ID, GitHub user ID
-  providerId            String // e.g., "google", "github"
+  accountId             String
+  providerId            String
   userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
   accessTokenExpiresAt  DateTime?
   refreshTokenExpiresAt DateTime?
   scope                 String?
-  password              String? // For email/password accounts
+  password              String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([providerId, accountId]) // Ensures unique external accounts
+  @@unique([providerId, accountId])
   @@map("account")
 }
 
@@ -88,9 +84,149 @@ model Verification {
   @@map("verification")
 }
 
-// Enums
+model Question {
+  id           String                   @id @default(cuid())
+  title        String                   @db.VarChar(255)
+  description  String
+  authorId     String
+  views        Int                      @default(0)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  isDeleted    Boolean                  @default(false)
+  attempt      String
+  answersCount Int                      @default(0)
+  answers      Answer[]
+  author       User                     @relation(fields: [authorId], references: [id])
+  questionTags TagsOnQuestions[]
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("question")
+}
+
+model Answer {
+  id         String    @id @default(cuid())
+  content    String
+  authorId   String
+  questionId String
+  isAccepted Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isDeleted  Boolean   @default(false)
+  author     User      @relation(fields: [authorId], references: [id])
+  question   Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  comments   Comment[]
+  votes      Vote[]
+
+  @@index([authorId])
+  @@index([questionId])
+  @@index([isAccepted])
+  @@map("answer")
+}
+
+model Tag {
+  id             String            @id @default(cuid())
+  name           String            @unique @db.VarChar(50)
+  description    String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  questionTags   TagsOnQuestions[]
+  usersFollowing TagsOnUsers[]
+
+  @@map("tag")
+}
+
+model TagsOnQuestions {
+  questionId String
+  tagId      String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([questionId, tagId])
+  @@map("tags_on_questions")
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  userId    String
+  answerId  String
+  type      VoteType
+  createdAt DateTime @default(now())
+  answer    Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, answerId])
+  @@index([answerId])
+  @@map("vote")
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  type        NotificationType
+  message     String
+  isRead      Boolean          @default(false)
+  entityId    String?
+  entityType  String?
+  createdAt   DateTime         @default(now())
+  recipient   User             @relation(fields: [recipientId], references: [id])
+
+  @@index([recipientId, isRead, createdAt])
+  @@map("notification")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  authorId  String
+  answerId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
+  answer    Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id])
+
+  @@index([authorId])
+  @@index([answerId])
+  @@map("comment")
+}
+
+model TagsOnUsers {
+  userId    String
+  tagId     String
+  createdAt DateTime @default(now())
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, tagId])
+  @@map("tags_on_users")
+}
+
+model Badge {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  imageUrl    String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  userBadges  UserBadges[]
+
+  @@map("badge")
+}
+
+model UserBadges {
+  userId    String
+  badgeId   String
+  awardedAt DateTime @default(now())
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, badgeId])
+  @@map("user_badges")
+}
+
 enum UserRole {
-  guest // Not directly stored for logged-in users, but conceptual for permissions
+  guest
   user
   admin
 }
@@ -107,159 +243,4 @@ enum NotificationType {
 enum VoteType {
   UPVOTE
   DOWNVOTE
-}
-
-// Core Q&A Models
-
-model Question {
-  id           String                   @id @default(cuid())
-  title        String                   @db.VarChar(255)
-  description  String                   @db.Text
-  attempt      String                   @db.Text
-  authorId     String
-  author       User                     @relation(fields: [authorId], references: [id])
-  views        Int                      @default(0)
-  createdAt    DateTime                 @default(now())
-  updatedAt    DateTime                 @updatedAt
-  isDeleted    Boolean                  @default(false) // Soft delete for moderation
-  searchVector Unsupported("TSVECTOR")? // Add this line back
-
-  answers      Answer[]
-  amswersCount Int               @default(0) // Count of answers for quick access
-  questionTags TagsOnQuestions[] // Many-to-many relationship with Tag
-
-  @@index([authorId])
-  @@index([createdAt])
-  @@map("question")
-}
-
-model Answer {
-  id         String   @id @default(cuid())
-  content    String   @db.Text
-  authorId   String
-  author     User     @relation(fields: [authorId], references: [id])
-  questionId String
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  isAccepted Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  isDeleted  Boolean  @default(false) // Soft delete for moderation
-
-  votes    Vote[]
-  comments Comment[] // For future comment feature
-
-  @@index([authorId])
-  @@index([questionId])
-  @@index([isAccepted])
-  @@map("answer")
-}
-
-model Tag {
-  id          String   @id @default(cuid())
-  name        String   @unique @db.VarChar(50)
-  description String?  @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  questionTags   TagsOnQuestions[] // Many-to-many relationship with Question
-  usersFollowing TagsOnUsers[] // Many-to-many relationship for users following tags
-
-  @@map("tag")
-}
-
-// Junction table for Many-to-Many between Question and Tag
-model TagsOnQuestions {
-  questionId String
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  tagId      String
-  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([questionId, tagId]) // Composite primary key
-  @@map("tags_on_questions")
-}
-
-// Voting System
-model Vote {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  answerId  String
-  answer    Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
-  type      VoteType // UPVOTE or DOWNVOTE
-  createdAt DateTime @default(now())
-
-  @@unique([userId, answerId]) // A user can only vote once per answer
-  @@index([answerId])
-  @@map("vote")
-}
-
-// Notifications
-model Notification {
-  id          String           @id @default(cuid())
-  recipientId String
-  recipient   User             @relation(fields: [recipientId], references: [id])
-  type        NotificationType
-  message     String           @db.Text
-  isRead      Boolean          @default(false)
-  // Optional: Store ID of the related entity (question, answer, comment) for deep linking
-  entityId    String?
-  entityType  String? // e.g., "Question", "Answer", "Comment"
-  createdAt   DateTime         @default(now())
-
-  @@index([recipientId, isRead, createdAt]) // Optimize for fetching unread notifications
-  @@map("notification")
-}
-
-// Future Expansion: Comments (Answers can have comments)
-model Comment {
-  id        String   @id @default(cuid())
-  content   String   @db.Text
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
-  answerId  String
-  answer    Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isDeleted Boolean  @default(false) // Soft delete
-
-  @@index([authorId])
-  @@index([answerId])
-  @@map("comment")
-}
-
-// For Personalized Content Feed / Tag Following
-model TagsOnUsers {
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tagId     String
-  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@id([userId, tagId]) // A user can only follow a tag once
-  @@map("tags_on_users")
-}
-
-// Gamification: Badges (Requires separate logic to award)
-model Badge {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?  @db.Text
-  imageUrl    String? // Path to badge icon
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  userBadges UserBadges[]
-
-  @@map("badge")
-}
-
-model UserBadges {
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badgeId   String
-  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
-  awardedAt DateTime @default(now())
-
-  @@id([userId, badgeId]) // A user can only be awarded a specific badge once
-  @@map("user_badges")
 }
