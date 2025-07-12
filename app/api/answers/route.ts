@@ -3,62 +3,65 @@ import { PrismaClient } from '@/lib/generated/prisma';
 
 const prisma = new PrismaClient();
 
-// GET ALL ANSWERS FOR A SPECIFIC QUESTION
+// GET USER'S OWN ANSWERS
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const questionId = searchParams.get('questionId');
+    const userId = searchParams.get('userId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const order = searchParams.get('order') || 'desc';
+    const filter = searchParams.get('filter'); // 'accepted', 'unaccepted', or null for all
 
-    // Validate required questionId parameter
-    if (!questionId) {
+    // Validate required userId parameter
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Missing required parameter: questionId' },
+        { error: 'Missing required parameter: userId' },
         { status: 400 }
       );
     }
 
-    // Check if question exists and is not deleted
-    const question = await prisma.question.findUnique({
-      where: {
-        id: questionId,
-        isDeleted: false
-      },
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
       select: {
         id: true,
-        title: true,
-        authorId: true
+        name: true,
+        image: true,
+        reputation: true,
+        bio: true
       }
     });
-
-    if (!question) {
+    // If user does not exist, return 404
+    if (!user) {
       return NextResponse.json(
-        { error: 'Question not found' },
+        { error: 'User not found' },
         { status: 404 }
       );
     }
 
     const skip = (page - 1) * limit;
 
-    const whereClause = {
-      questionId: questionId,
+    // Build where clause
+    const whereClause: any = {
+      authorId: userId,
       isDeleted: false,
     };
 
-    // Define order by clause with accepted answers prioritized
-    const orderByClause = sortBy === 'votes' 
-      ? [
-          { isAccepted: 'desc' as const },
-          { votes: { _count: order as 'asc' | 'desc' } }
-        ]
-      : [
-          { isAccepted: 'desc' as const },
-          { [sortBy]: order as 'asc' | 'desc' }
-        ];
+    // Apply filter if specified
+    if (filter === 'accepted') {
+      whereClause.isAccepted = true;
+    } else if (filter === 'unaccepted') {
+      whereClause.isAccepted = false;
+    }
 
+    // Define order by clause with votes handling
+    const orderByClause = sortBy === 'votes' 
+      ? { votes: { _count: order as 'asc' | 'desc' } }
+      : { [sortBy]: order as 'asc' | 'desc' };
+
+    // Fetch answers with pagination, sorting, and filtering   
     const answers = await prisma.answer.findMany({
       where: whereClause,
       include: {
@@ -67,8 +70,21 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             image: true,
-            reputation: true,
-            bio: true
+            reputation: true
+          }
+        },
+        question: {
+          select: {
+            id: true,
+            title: true,
+            views: true,
+            createdAt: true,
+            author: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
           }
         },
         votes: {
@@ -112,16 +128,44 @@ export async function GET(request: NextRequest) {
       where: whereClause
     });
 
+    // Get statistics for the user's answers
+    const stats = await prisma.answer.aggregate({
+      where: {
+        authorId: userId,
+        isDeleted: false
+      },
+      _count: {
+        id: true
+      }
+    });
+
+    // Get count of accepted answers
+    const acceptedAnswersCount = await prisma.answer.count({
+      where: {
+        authorId: userId,
+        isDeleted: false,
+        isAccepted: true
+      }
+    });
+
     // Format response data
     const formattedAnswers = answers.map(answer => {
       const upvotes = answer.votes.filter(vote => vote.type === 'UPVOTE').length;
       const downvotes = answer.votes.filter(vote => vote.type === 'DOWNVOTE').length;
       const netVotes = upvotes - downvotes;
-
+    
+        // Include question details
       return {
         id: answer.id,
         content: answer.content,
         author: answer.author,
+        question: {
+          id: answer.question.id,
+          title: answer.question.title,
+          views: answer.question.views,
+          createdAt: answer.question.createdAt,
+          author: answer.question.author
+        },
         isAccepted: answer.isAccepted,
         votes: {
           upvotes,
@@ -144,12 +188,16 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Check if the user has any answers
     return NextResponse.json({
       answers: formattedAnswers,
-      question: {
-        id: question.id,
-        title: question.title,
-        authorId: question.authorId
+      user: user,
+      stats: {
+        totalAnswers: stats._count.id,
+        acceptedAnswers: acceptedAnswersCount,
+        acceptanceRate: stats._count.id > 0 
+          ? Math.round((acceptedAnswersCount / stats._count.id) * 100) 
+          : 0
       },
       pagination: {
         currentPage: page,
@@ -157,160 +205,14 @@ export async function GET(request: NextRequest) {
         totalCount,
         hasNext: page * limit < totalCount,
         hasPrev: page > 1
-      }
+      },
+      filter: filter || 'all'
     });
 
   } catch (error) {
-    console.error('Error fetching answers:', error);
+    console.error('Error fetching user answers:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch answers' },
-      { status: 500 }
-    );
-  }
-}
-
-// POST NEW ANSWER
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { content, authorId, questionId } = body;
-
-    // Validate required fields
-    if (!content || !authorId || !questionId) {
-      return NextResponse.json(
-        { error: 'Missing required fields: content, authorId, questionId' },
-        { status: 400 }
-      );
-    }
-
-    // Validate content length
-    if (content.trim().length < 10) {
-      return NextResponse.json(
-        { error: 'Answer content must be at least 10 characters long' },
-        { status: 400 }
-      );
-    }
-
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { id: authorId }
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check if question exists and is not deleted
-    const question = await prisma.question.findUnique({
-      where: {
-        id: questionId,
-        isDeleted: false
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
-      }
-    });
-
-    if (!question) {
-      return NextResponse.json(
-        { error: 'Question not found' },
-        { status: 404 }
-      );
-    }
-
-    // Create answer and update question answer count in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // Create the answer
-      const answer = await tx.answer.create({
-        data: {
-          content: content.trim(),
-          authorId,
-          questionId
-        },
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
-              reputation: true,
-              bio: true
-            }
-          },
-          _count: {
-            select: {
-              votes: true,
-              comments: true
-            }
-          }
-        }
-      });
-
-      // Update question answer count
-      await tx.question.update({
-        where: { id: questionId },
-        data: {
-          answersCount: {
-            increment: 1
-          }
-        }
-      });
-
-      // Create notification for question author (if different from answer author)
-      if (question.author.id !== authorId) {
-        await tx.notification.create({
-          data: {
-            recipientId: question.author.id,
-            type: 'ANSWER_TO_QUESTION',
-            message: `${user.name} answered your question: "${question.title}"`,
-            entityId: answer.id,
-            entityType: 'Answer'
-          }
-        });
-      }
-
-      return answer;
-    });
-
-    // Format response
-    const formattedAnswer = {
-      id: result.id,
-      content: result.content,
-      author: result.author,
-      questionId: result.questionId,
-      isAccepted: result.isAccepted,
-      votes: {
-        upvotes: 0,
-        downvotes: 0,
-        netVotes: 0,
-        userVotes: []
-      },
-      comments: [],
-      commentCount: 0,
-      createdAt: result.createdAt,
-      updatedAt: result.updatedAt
-    };
-
-    return NextResponse.json(
-      { 
-        answer: formattedAnswer, 
-        message: 'Answer created successfully' 
-      },
-      { status: 201 }
-    );
-
-  } catch (error) {
-    console.error('Error creating answer:', error);
-    return NextResponse.json(
-      { error: 'Failed to create answer' },
+      { error: 'Failed to fetch user answers' },
       { status: 500 }
     );
   }
