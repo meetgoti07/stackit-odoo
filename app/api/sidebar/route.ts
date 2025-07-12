@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 
+interface SidebarPost {
+  id: string
+  title: string
+  views?: number
+  answersCount?: number
+  netVotes?: number
+  createdAt: string
+}
+
+interface SidebarSection {
+  title: string
+  type: 'trending' | 'hot' | 'featured'
+  posts: SidebarPost[]
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get current date for time calculations
@@ -116,13 +131,13 @@ export async function GET(request: NextRequest) {
       })
       .slice(0, 5);
 
-    // Fallback data if no results
-    const sections = [];
+    // Build sections array
+    const sections: SidebarSection[] = [];
 
     if (trendingQuestions.length > 0) {
       sections.push({
         title: "🔥 Trending This Week",
-        type: "trending" as const,
+        type: "trending",
         posts: trendingQuestions.map(q => ({
           id: q.id,
           title: q.title,
@@ -135,7 +150,7 @@ export async function GET(request: NextRequest) {
     if (hotTopics.length > 0) {
       sections.push({
         title: "💬 Hot Topics",
-        type: "hot" as const,
+        type: "hot",
         posts: hotTopics.map(q => ({
           id: q.id,
           title: q.title,
@@ -148,7 +163,7 @@ export async function GET(request: NextRequest) {
     if (featuredQuestions.length > 0) {
       sections.push({
         title: "⭐ Featured",
-        type: "featured" as const,
+        type: "featured",
         posts: featuredQuestions.map(q => ({
           id: q.id,
           title: q.title,
@@ -179,7 +194,7 @@ export async function GET(request: NextRequest) {
       if (recentQuestions.length > 0) {
         sections.push({
           title: "📰 Recent Questions",
-          type: "trending" as const,
+          type: "trending",
           posts: recentQuestions.map(q => ({
             id: q.id,
             title: q.title,
