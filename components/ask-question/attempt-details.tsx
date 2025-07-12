@@ -8,6 +8,7 @@ interface AttemptDetailsProps {
   onChange: (value: string) => void
 }
 
+// the atteemp details checked
 export function AttemptDetails({ value, onChange }: AttemptDetailsProps) {
   return (
     <div className="space-y-2">
