@@ -1,5 +1,5 @@
 "use client"
-
+// importing necessary libraries
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -11,11 +11,11 @@ import { AttemptDetails } from "@/components/ask-question/attempt-details"
 import { TagsInput } from "@/components/ask-question/tags-input"
 import { DuplicateChecker } from "@/components/ask-question/duplicate-checker"
 import { createQuestion, useCurrentUser } from "@/lib/api"
-
+// main function
 export default function AskQuestionPage() {
   const router = useRouter()
   const { user, isLoading: userLoading, error: userError } = useCurrentUser()
-  
+  // defining states
   const [title, setTitle] = useState("")
   const [details, setDetails] = useState("")
   const [attempts, setAttempts] = useState("")
@@ -26,7 +26,7 @@ export default function AskQuestionPage() {
 
   const canSubmit =
     title.length >= 10 && details.length >= 20 && attempts.length >= 20 && tags.length > 0 && isNotDuplicate
-
+// submitting logic
   const handleSubmit = async () => {
     if (!canSubmit || isSubmitting) return
 
