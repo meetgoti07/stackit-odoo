@@ -181,7 +181,7 @@ export function SignupForm({ className, ...props }: SignupFormProps) {
                     </div>
                   </div>
 
-                  {/* Full Width Fields */}
+                  {/* Full Width fields */}
                   <div className="grid gap-3">
                     <Label htmlFor="image">Profile Image URL</Label>
                     <Input
