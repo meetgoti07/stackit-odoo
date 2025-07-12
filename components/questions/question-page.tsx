@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, use } from "react"
 import { Button } from "@/components/ui/button"
 import { RichTextEditor } from "@/components/rich-text-editor/rich-text-editor"
