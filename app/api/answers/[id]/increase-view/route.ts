@@ -6,10 +6,11 @@ const prisma = new PrismaClient();
 // POST INCREASE VIEW COUNT FOR ANSWER (increments associated question's view count)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const answerId = params.id;
+    const { id } = await params;
+    const answerId = id;
 
     // Check if answer exists and get associated question
     const answer = await prisma.answer.findUnique({

@@ -6,10 +6,11 @@ const prisma = new PrismaClient();
 // POST VOTE ON ANSWER
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const questionId = params.id;
+    const { id } = await params;
+    const questionId = id;
     const body = await request.json();
     const { answerId, userId, voteType } = body;
 

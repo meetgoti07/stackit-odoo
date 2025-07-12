@@ -6,10 +6,11 @@ const prisma = new PrismaClient();
 // GET SINGLE QUESTION BY ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const questionId = params.id;
+    const { id } = await params;
+    const questionId = id;
 
     const question = await prisma.question.findUnique({
       where: {
@@ -129,10 +130,11 @@ export async function GET(
 // UPDATE QUESTION (PUT - Full Update)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const questionId = params.id;
+    const { id } = await params;
+    const questionId = id;
     const body = await request.json();
     const { title, description, attempt, tags, authorId } = body;
 
@@ -246,10 +248,11 @@ export async function PUT(
 // PARTIAL UPDATE QUESTION (PATCH)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const questionId = params.id;
+    const { id } = await params;
+    const questionId = id;
     const body = await request.json();
     const { authorId, ...updateData } = body;
 
@@ -384,10 +387,11 @@ export async function PATCH(
 // DELETE QUESTION (Soft Delete)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const questionId = params.id;
+    const { id } = await params;
+    const questionId = id;
     const { searchParams } = new URL(request.url);
     const authorId = searchParams.get('authorId');
 

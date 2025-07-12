@@ -5,10 +5,11 @@ import { prisma } from '@/lib/prisma';
 // GET ALL COMMENTS FOR A SPECIFIC ANSWER
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const answerId = params.id;
+    const { id } = await params;
+    const answerId = id;
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -115,10 +116,11 @@ export async function GET(
 // POST NEW COMMENT ON ANSWER
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const answerId = params.id;
+    const { id } = await params;
+    const answerId = id;
     const body = await request.json();
     const { content, authorId } = body;
 

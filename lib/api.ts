@@ -195,6 +195,59 @@ export interface UsersResponse {
   }
 }
 
+// User Stats Types
+export interface UserStats {
+  user: {
+    id: string
+    name: string
+    email: string
+    image: string | null
+    reputation: number
+    createdAt: string
+  }
+  stats: {
+    questionsAsked: number
+    answersGiven: number
+    acceptedAnswers: number
+    totalVotes: number
+    reputation: number
+    reputationChange: string
+    badges: Array<{
+      id: string
+      name: string
+      description: string | null
+      imageUrl: string | null
+      awardedAt: string
+    }>
+  }
+}
+
+export interface WatchedTag {
+  id: string
+  name: string
+  description: string | null
+  questionsCount: number
+  watchedAt: string
+}
+
+export interface WatchedTagsResponse {
+  watchedTags: WatchedTag[]
+  total: number
+}
+
+export interface AddWatchedTagRequest {
+  tagName: string
+}
+
+export interface AddWatchedTagResponse {
+  message: string
+  tag: {
+    id: string
+    name: string
+    description: string | null
+  }
+}
+
 // Fetcher function for SWR
 const fetcher = async (url: string) => {
   const res = await fetch(url)
@@ -319,6 +372,37 @@ export function useUsers(
   return {
     users: data?.users || [],
     pagination: data?.pagination,
+    isLoading,
+    error,
+    mutate,
+  }
+}
+
+// User Stats Hook
+export function useUserStats() {
+  const { data, error, isLoading, mutate } = useSWR<UserStats>(
+    '/api/user/stats',
+    fetcher
+  )
+
+  return {
+    userStats: data,
+    isLoading,
+    error,
+    mutate,
+  }
+}
+
+// Watched Tags Hooks
+export function useWatchedTags() {
+  const { data, error, isLoading, mutate } = useSWR<WatchedTagsResponse>(
+    '/api/user/watched-tags',
+    fetcher
+  )
+
+  return {
+    watchedTags: data?.watchedTags || [],
+    total: data?.total || 0,
     isLoading,
     error,
     mutate,
@@ -453,4 +537,35 @@ export function useSidebarData() {
     error,
     mutate,
   }
+}
+
+// API functions for watched tags
+export async function addWatchedTag(tagData: AddWatchedTagRequest): Promise<AddWatchedTagResponse> {
+  const response = await fetch('/api/user/watched-tags', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(tagData),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to add watched tag')
+  }
+
+  return response.json()
+}
+
+export async function removeWatchedTag(tagId: string): Promise<{ message: string }> {
+  const response = await fetch(`/api/user/watched-tags/${tagId}`, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to remove watched tag')
+  }
+
+  return response.json()
 }
