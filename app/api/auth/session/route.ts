@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
         headers: await headers(),
     });
 
+    // check the authorization of data
     if (!data || !data.session || !data.user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
     const currentTime = Date.now();
     const isSessionValid = expiresAt > currentTime;
 
+    // is session is valid checked
     if (!isSessionValid) {
       return NextResponse.json(
         { error: 'Session expired' },
@@ -28,6 +30,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // return the response 
     return NextResponse.json({
       user: {
         id: data.user.id,
