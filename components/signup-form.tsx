@@ -108,7 +108,7 @@ export function SignupForm({ className, ...props }: SignupFormProps) {
                     <p className="text-red-500 text-sm text-center">{error}</p>
                   )}
 
-                  {/* Required Fields - 2 Column Layout */}
+                  {/* Required Fields - 2 Column layout */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="grid gap-3">
                       <Label htmlFor="name">Full Name *</Label>
