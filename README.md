@@ -1,4 +1,10 @@
-# StackIt - Community-Driven Q&A Platform
+# Demo Video
+
+[![StackIt Demo Video](https://img.youtube.com/vi/avn73vn2U90/hqdefault.jpg)](https://www.youtube.com/watch?v=avn73vn2U90)
+
+> **Watch the complete walkthrough of StackIt features and functionality**
+>
+> *Click the image above to watch the demo video on YouTube*It - Community-Driven Q&A Platform
 
 ## Project Overview
 
